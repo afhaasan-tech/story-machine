@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Story Machine · آلة الحكايات
 
-## Getting Started
+A bilingual (Arabic / English) bedtime story website for children aged 3-7. A parent or child gives a "spark" (the child's name, a favorite animal or toy, and a place or mood) and an AI writes a gentle, complete bedtime story starring the child. Stories come from free [OpenRouter](https://openrouter.ai) models.
 
-First, run the development server:
+**Public URL:** _added after the first deploy (see the repository description)_
+
+## Run it locally
 
 ```bash
+npm install
+cp .env.example .env.local   # on Windows: copy .env.example .env.local
+# open .env.local and set OPENROUTER_API_KEY=your-key
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3000. The key is only read on the server (`src/app/api/story/route.ts`) and never reaches the browser. Never commit `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Other commands: `npm test` (unit tests), `npm run build` (production build). The scripts use webpack (`--webpack`) because Turbopack's PostCSS step crashes on some Windows setups.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Change the models
 
-## Learn More
+Edit `src/config/models.ts`. It is the only list of models: the dropdown, the server allow-list and the fallback order all read from it. Every id **must end in `:free`** (a unit test checks this). The first entry is the default. If the chosen model fails or returns invalid output, the server automatically falls back to the next models in the list.
 
-To learn more about Next.js, take a look at the following resources:
+## Add a language
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. In `src/lib/prompt.ts`, add the code to `Lang` (for example `"fr"`).
+2. In `src/lib/translations.ts`, add an entry to `LANGS` (code, label, `dir`) and a full dictionary in `translations`.
+3. In `src/lib/validate.ts`, allow the new code, and in `src/lib/story.ts` extend `matchesLanguage` for its script.
+4. Mention the language in the system prompt in `src/lib/prompt.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Safety and limits
 
-## Deploy on Vercel
+- Only models in the allow-list are accepted; anything else is rejected.
+- Input is length-limited, restricted to letters, numbers and light punctuation, and screened for inappropriate words.
+- Rate limit: 10 requests per minute per IP (in memory, per server instance).
+- Output is capped at 3000 tokens per call.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js (App Router), TypeScript, Tailwind CSS, `next/font` (Cairo for Arabic, Nunito for English). No database, accounts, voice or images.

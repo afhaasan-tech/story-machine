@@ -1,0 +1,79 @@
+import { MODELS } from "@/config/models";
+import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
+import type { Input } from "./validate";
+
+export type Story = { title: string; story: string };
+
+const MAX_TOKENS = 3000;
+const PER_CALL_TIMEOUT_MS = 24_000;
+const MAX_ATTEMPTS = 3; // chosen model + up to 2 fallbacks, all within the 60s function limit
+
+/** Pull a {title, story} object out of whatever the model returned. */
+export function parseStory(raw: string): Story | null {
+  const text = raw.replace(/```(?:json)?/gi, "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    const o = JSON.parse(text.slice(start, end + 1));
+    if (typeof o.title !== "string" || typeof o.story !== "string") return null;
+    const title = o.title.trim();
+    const story = o.story.trim();
+    if (!title || story.length < 200) return null;
+    return { title, story };
+  } catch {
+    return null;
+  }
+}
+
+/** The story must really be in the requested language. */
+export function matchesLanguage(s: Story, lang: "ar" | "en"): boolean {
+  const text = s.title + s.story;
+  const arabic = (text.match(/[؀-ۿ]/g) ?? []).length;
+  const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+  const total = arabic + latin;
+  if (total === 0) return false;
+  return lang === "ar" ? arabic / total > 0.9 : arabic / total < 0.05;
+}
+
+async function callModel(model: string, input: Input, key: string): Promise<Story | null> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "X-Title": "Story Machine",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: MAX_TOKENS,
+      temperature: 0.9,
+      reasoning: { enabled: false },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserMessage(input) },
+      ],
+    }),
+    signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== "string") return null;
+  const story = parseStory(content);
+  return story && matchesLanguage(story, input.lang) ? story : null;
+}
+
+/** Try the chosen model first; if it fails or returns bad JSON, fall back to other free models. */
+export async function generateStory(input: Input, key: string): Promise<Story | null> {
+  const order = [input.model, ...MODELS.map((m) => m.id).filter((id) => id !== input.model)];
+  for (const model of order.slice(0, MAX_ATTEMPTS)) {
+    try {
+      const s = await callModel(model, input, key);
+      if (s) return s;
+    } catch {
+      // timeout / network: try the next model
+    }
+  }
+  return null;
+}
