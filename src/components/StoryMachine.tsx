@@ -150,7 +150,14 @@ export default function StoryMachine() {
     const synth = window.speechSynthesis;
     synth.cancel();
     const voices = synth.getVoices();
-    const found = voices.find((v) => v.lang.toLowerCase().startsWith(storyLang));
+    // Prefer the most natural voice the device offers (Edge "Natural", Google, Apple "Enhanced"/"Premium").
+    const quality = (v: SpeechSynthesisVoice) =>
+      (/natural|neural|online/i.test(v.name) ? 3 : 0) +
+      (/google|enhanced|premium/i.test(v.name) ? 2 : 0) +
+      (v.localService ? 0 : 1);
+    const found = voices
+      .filter((v) => v.lang.toLowerCase().startsWith(storyLang))
+      .sort((a, b) => quality(b) - quality(a))[0];
     if (!found && storyLang === "ar" && voices.length > 0) {
       setVoiceMissing(true);
       setVoice("idle");
