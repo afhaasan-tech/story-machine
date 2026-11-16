@@ -1,9 +1,10 @@
 // Tells the browser which optional features are configured. Only booleans, never keys.
 export async function GET() {
+  const eleven = Boolean(process.env.ELEVENLABS_API_KEY);
   return Response.json(
     {
-      narration: Boolean(process.env.ELEVENLABS_API_KEY),
-      dictation: Boolean(process.env.GROQ_API_KEY),
+      narration: eleven,
+      dictation: eleven || Boolean(process.env.GROQ_API_KEY),
     },
     { headers: { "Cache-Control": "no-store" } },
   );
