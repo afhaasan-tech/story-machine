@@ -79,7 +79,8 @@ export async function POST(request: Request) {
   // Split the sentence into name / animal / place with the story key (free models).
   const orKey = process.env.OPENROUTER_API_KEY;
   const spark = orKey ? await extractSpark(text, orKey) : null;
-  const fields = spark ?? { name: "", subject: "", place: text.slice(0, 50) };
+  // If no model could split the sentence, return empty fields; the page shows what we heard.
+  const fields = spark ?? { name: "", subject: "", place: "" };
 
   // Same safety checks as typed input (use a valid dummy for the empty fields).
   const check = validate({

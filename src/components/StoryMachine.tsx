@@ -68,6 +68,7 @@ export default function StoryMachine() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
+  const [micHeard, setMicHeard] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const speakAbort = useRef<AbortController | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -246,6 +247,7 @@ export default function StoryMachine() {
       return;
     }
     setMicError(null);
+    setMicHeard("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
@@ -266,10 +268,15 @@ export default function StoryMachine() {
           if (!res.ok) {
             setMicError(typeof data.error === "string" ? data.error : "transcribe_failed");
           } else {
-            if (data.name) setName(data.name);
-            if (data.subject) setSubject(data.subject);
-            setPlace(data.place ?? "");
-            setError(null);
+            setMicHeard(typeof data.text === "string" ? data.text : "");
+            if (!data.name && !data.subject && !data.place) {
+              setMicError("not_understood");
+            } else {
+              if (data.name) setName(data.name);
+              if (data.subject) setSubject(data.subject);
+              if (data.place) setPlace(data.place);
+              setError(null);
+            }
           }
         } catch {
           setMicError("network");
@@ -353,6 +360,11 @@ export default function StoryMachine() {
                     {transcribing ? t.transcribing : recording ? t.recording : t.sayIt}
                   </button>
                   <p className="mt-2 text-base text-lavender-300">{t.sayItHint}</p>
+                  {micHeard && (
+                    <p className="mt-2 text-base text-lavender-200">
+                      {t.heard} “{micHeard}”
+                    </p>
+                  )}
                   {micError && (
                     <p role="alert" className="mt-2 text-base text-danger">
                       {t.errors[micError] ?? t.errors.transcribe_failed}

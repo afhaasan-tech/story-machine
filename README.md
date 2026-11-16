@@ -32,7 +32,7 @@ Edit `src/config/models.ts`. It is the only list of models: the dropdown, the se
 
 Both features are off until their key exists, and keys stay on the server.
 
-- **Listen to the story:** works out of the box with the browser's own voices. Add `ELEVENLABS_API_KEY` (free plan, about 10 minutes a month, not for selling an app) for a natural narrator via `/api/speak`. If the quota runs out it falls back to the browser voice. Optional `ELEVENLABS_VOICE_ID`.
+- **Listen to the story:** works out of the box with the browser's own voices. Add `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` (free plan, about 10 minutes a month, not for selling an app) for a natural narrator via `/api/speak`. On the free plan the voice must be one in **your own account** (ElevenLabs > Voices > My Voices > copy voice ID); library voices need a paid plan. If the quota runs out it falls back to the browser voice.
 - **Say the spark out loud:** works with the same `ELEVENLABS_API_KEY` (ElevenLabs Scribe). Optionally add `GROQ_API_KEY` (free Whisper on console.groq.com), which is tried first to save ElevenLabs credits. `/api/transcribe` turns speech into text and fills the name, animal and place.
 - Only use **free** keys on the public site: a paid key on a public website can be spent by strangers.
 

@@ -4,7 +4,7 @@ export type Spark = { name: string; subject: string; place: string };
 
 /** Turn a spoken sentence into the three spark fields, using the same free models. */
 export async function extractSpark(transcript: string, key: string): Promise<Spark | null> {
-  for (const model of MODELS.slice(0, 2).map((m) => m.id)) {
+  for (const model of MODELS.map((m) => m.id)) {
     try {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -23,7 +23,7 @@ export async function extractSpark(transcript: string, key: string): Promise<Spa
             { role: "user", content: JSON.stringify({ spoken: transcript }) },
           ],
         }),
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) continue;
       const data = await res.json();

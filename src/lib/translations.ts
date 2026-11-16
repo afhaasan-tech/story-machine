@@ -39,6 +39,7 @@ export type Dict = {
   sayItHint: string;
   recording: string;
   transcribing: string;
+  heard: string;
   retry: string;
   errors: Record<string, string>;
   required: string;
@@ -77,6 +78,7 @@ export const translations: Record<Lang, Dict> = {
     sayItHint: "مثال: «سارة، أرنب، القمر»",
     recording: "نسمعك... اضغط للإيقاف",
     transcribing: "نكتب ما قلته...",
+    heard: "سمعنا:",
     noVoice: "جهازك لا يحتوي على صوت عربي. جرّب جوالًا أو متصفحًا آخر، أو أضف صوتًا عربيًا من إعدادات الجهاز.",
     retry: "حاول مرة أخرى",
     required: "يرجى كتابة اسم الطفل وحيوانه أو لعبته المفضلة.",
@@ -89,6 +91,7 @@ export const translations: Record<Lang, Dict> = {
       generation_failed: "النجوم نامت قليلًا ولم نستطع كتابة الحكاية. حاول مرة أخرى.",
       network: "يبدو أن الاتصال ضعيف. تأكد من الإنترنت وحاول مرة أخرى.",
       mic_denied: "نحتاج إذن الميكروفون لنسمعك. فعّله من إعدادات المتصفح، أو اكتب بدلًا من ذلك.",
+      not_understood: "سمعناك، لكن لم نستطع تحديد الاسم والحيوان والمكان. اكتبها في الخانات من فضلك.",
       no_speech: "لم نسمع شيئًا. اقترب من الميكروفون وحاول مرة أخرى.",
       transcribe_failed: "لم نستطع فهم الصوت. حاول مرة أخرى أو اكتب بدلًا من ذلك.",
     },
@@ -124,6 +127,7 @@ export const translations: Record<Lang, Dict> = {
     sayItHint: "e.g. “Sara, a bunny, the moon”",
     recording: "Listening... tap to stop",
     transcribing: "Writing down what you said...",
+    heard: "We heard:",
     noVoice: "This device has no voice for this language. Try a phone or another browser.",
     retry: "Try again",
     required: "Please enter the child's name and a favorite animal or toy.",
@@ -136,6 +140,7 @@ export const translations: Record<Lang, Dict> = {
       generation_failed: "The stars dozed off and we couldn't write the story. Please try again.",
       network: "The connection seems weak. Check your internet and try again.",
       mic_denied: "We need the microphone to hear you. Allow it in your browser settings, or type instead.",
+      not_understood: "We heard you, but couldn't pick out the name, animal and place. Please type them in.",
       no_speech: "We didn't hear anything. Move closer to the microphone and try again.",
       transcribe_failed: "We couldn't understand the audio. Try again, or type instead.",
     },
