@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_MODEL, MODELS } from "@/config/models";
 import type { Lang, Length } from "@/lib/prompt";
 import { LANGS, translations } from "@/lib/translations";
@@ -62,7 +62,16 @@ export default function StoryMachine() {
   const [story, setStory] = useState<Story | null>(null);
   const [storyLang, setStoryLang] = useState<Lang>("ar");
   const [copied, setCopied] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
+  const [voice, setVoice] = useState<"idle" | "loading" | "playing" | "paused">("idle");
+  const [voiceError, setVoiceError] = useState(false);
+  const [features, setFeatures] = useState({ narration: false, dictation: false });
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speakAbort = useRef<AbortController | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const autoStop = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [voiceMissing, setVoiceMissing] = useState(false);
 
   const t = translations[lang];
@@ -114,54 +123,168 @@ export default function StoryMachine() {
     }
   }
 
+  // ---------- Narration (listen to the story) ----------
   function stopSpeaking() {
     try {
       window.speechSynthesis?.cancel();
     } catch {}
-    setSpeaking(false);
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.src = "";
+      audioRef.current = null;
+    }
+    speakAbort.current?.abort();
+    speakAbort.current = null;
+    setVoice("idle");
   }
 
-  // Read the story aloud with the browser's own voices (free, no key). Quality depends on the device.
-  function speakStory() {
-    if (!story || typeof window === "undefined" || !("speechSynthesis" in window)) {
+  // Fallback: the browser's own voices (free; quality depends on the device).
+  function speakWithBrowser() {
+    if (!story || !("speechSynthesis" in window)) {
       setVoiceMissing(true);
+      setVoice("idle");
       return;
     }
     const synth = window.speechSynthesis;
     synth.cancel();
     const voices = synth.getVoices();
-    const voice = voices.find((v) => v.lang.toLowerCase().startsWith(storyLang));
-    // Arabic voices are missing on some computers; without one the text would be read wrongly.
-    if (!voice && storyLang === "ar" && voices.length > 0) {
+    const found = voices.find((v) => v.lang.toLowerCase().startsWith(storyLang));
+    if (!found && storyLang === "ar" && voices.length > 0) {
       setVoiceMissing(true);
+      setVoice("idle");
       return;
     }
     setVoiceMissing(false);
     const parts = [story.title, ...story.story.split(/\n+/)].filter((p) => p.trim());
     parts.forEach((text, i) => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = voice?.lang ?? (storyLang === "ar" ? "ar-SA" : "en-US");
-      if (voice) u.voice = voice;
-      u.rate = 0.85; // slow and sleepy
-      u.pitch = 1;
+      u.lang = found?.lang ?? (storyLang === "ar" ? "ar-SA" : "en-US");
+      if (found) u.voice = found;
+      u.rate = 0.85;
       if (i === parts.length - 1) {
-        u.onend = () => setSpeaking(false);
-        u.onerror = () => setSpeaking(false);
+        u.onend = () => setVoice("idle");
+        u.onerror = () => setVoice("idle");
       }
       synth.speak(u);
     });
-    setSpeaking(true);
+    setVoice("playing");
   }
 
-  // Stop reading when leaving the story, starting a new one, or closing the page.
+  async function startNarration() {
+    if (!story) return;
+    setVoiceMissing(false);
+    setVoiceError(false);
+    if (!features.narration) {
+      speakWithBrowser();
+      return;
+    }
+    setVoice("loading");
+    const ctrl = new AbortController();
+    speakAbort.current = ctrl;
+    try {
+      const res = await fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `${story.title}.\n\n${story.story}` }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      audioRef.current = audio;
+      audio.onended = () => setVoice("idle");
+      await audio.play();
+      setVoice("playing");
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      // Quota used up or service busy: fall back to the browser voice.
+      setVoiceError(true);
+      speakWithBrowser();
+    }
+  }
+
+  function togglePause() {
+    const a = audioRef.current;
+    if (a) {
+      if (a.paused) {
+        a.play();
+        setVoice("playing");
+      } else {
+        a.pause();
+        setVoice("paused");
+      }
+      return;
+    }
+    const synth = window.speechSynthesis;
+    if (voice === "playing") {
+      synth.pause();
+      setVoice("paused");
+    } else {
+      synth.resume();
+      setVoice("playing");
+    }
+  }
+
   useEffect(() => {
     if (screen !== "story" || loading) stopSpeaking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, loading]);
-  useEffect(() => stopSpeaking, []);
-  // Some browsers load their voice list late.
+  useEffect(() => stopSpeaking, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     window.speechSynthesis?.getVoices();
+    fetch("/api/features")
+      .then((r) => r.json())
+      .then((f) => setFeatures({ narration: !!f.narration, dictation: !!f.dictation }))
+      .catch(() => {});
   }, []);
+
+  // ---------- Dictation (say the spark out loud) ----------
+  async function toggleRecording() {
+    if (recording) {
+      recorderRef.current?.stop();
+      return;
+    }
+    setMicError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop());
+        clearTimeout(autoStop.current);
+        setRecording(false);
+        const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+        setTranscribing(true);
+        try {
+          const fd = new FormData();
+          fd.append("audio", blob);
+          fd.append("lang", lang);
+          const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setMicError(typeof data.error === "string" ? data.error : "transcribe_failed");
+          } else {
+            if (data.name) setName(data.name);
+            if (data.subject) setSubject(data.subject);
+            setPlace(data.place ?? "");
+            setError(null);
+          }
+        } catch {
+          setMicError("network");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+      autoStop.current = setTimeout(() => rec.state === "recording" && rec.stop(), 20_000);
+    } catch {
+      setMicError("mic_denied");
+    }
+  }
 
   async function copyStory() {
     if (!story) return;
@@ -217,6 +340,27 @@ export default function StoryMachine() {
                 if (!loading) generate();
               }}
             >
+              {features.dictation && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    disabled={transcribing || loading}
+                    aria-pressed={recording}
+                    className={`${softBtn} ${recording ? "!border-moon !text-moon" : ""}`}
+                  >
+                    <span aria-hidden>{recording ? "⏹" : "🎤"}</span>{" "}
+                    {transcribing ? t.transcribing : recording ? t.recording : t.sayIt}
+                  </button>
+                  <p className="mt-2 text-base text-lavender-300">{t.sayItHint}</p>
+                  {micError && (
+                    <p role="alert" className="mt-2 text-base text-danger">
+                      {t.errors[micError] ?? t.errors.transcribe_failed}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <label className="block">
                 <span className="mb-1 block text-start text-lg font-bold text-lavender-200">{t.nameLabel}</span>
                 <input
@@ -358,20 +502,30 @@ export default function StoryMachine() {
               </p>
             )}
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
               <button
                 type="button"
-                onClick={speaking ? stopSpeaking : speakStory}
-                aria-pressed={speaking}
+                disabled={voice === "loading"}
+                onClick={voice === "idle" ? startNarration : togglePause}
                 className={`${bigBtn} flex items-center gap-2`}
               >
-                <span aria-hidden>{speaking ? "⏹" : "🔊"}</span>
-                {speaking ? t.stopListening : t.listen}
+                <span aria-hidden>{voice === "playing" ? "⏸" : "🔊"}</span>
+                {voice === "idle" ? t.listen : voice === "loading" ? t.preparingVoice : voice === "playing" ? t.pause : t.resume}
               </button>
+              {(voice === "playing" || voice === "paused") && (
+                <button type="button" onClick={stopSpeaking} className={softBtn}>
+                  ⏹ {t.stopListening}
+                </button>
+              )}
             </div>
             {voiceMissing && (
               <p role="status" className="mt-3 text-center text-lg text-lavender-200">
                 {t.noVoice}
+              </p>
+            )}
+            {voiceError && !voiceMissing && (
+              <p role="status" className="mt-3 text-center text-base text-lavender-300">
+                {t.voiceFallback}
               </p>
             )}
 

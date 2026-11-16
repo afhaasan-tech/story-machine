@@ -31,6 +31,14 @@ export type Dict = {
   listen: string;
   stopListening: string;
   noVoice: string;
+  pause: string;
+  resume: string;
+  preparingVoice: string;
+  voiceFallback: string;
+  sayIt: string;
+  sayItHint: string;
+  recording: string;
+  transcribing: string;
   retry: string;
   errors: Record<string, string>;
   required: string;
@@ -61,6 +69,14 @@ export const translations: Record<Lang, Dict> = {
     copied: "تم النسخ ✓",
     listen: "استمع للحكاية",
     stopListening: "إيقاف",
+    pause: "إيقاف مؤقت",
+    resume: "متابعة",
+    preparingVoice: "نجهّز الصوت...",
+    voiceFallback: "الصوت الجميل مشغول الآن، نقرأ لك بصوت جهازك.",
+    sayIt: "قلها بصوتك",
+    sayItHint: "مثال: «سارة، أرنب، القمر»",
+    recording: "نسمعك... اضغط للإيقاف",
+    transcribing: "نكتب ما قلته...",
     noVoice: "جهازك لا يحتوي على صوت عربي. جرّب جوالًا أو متصفحًا آخر، أو أضف صوتًا عربيًا من إعدادات الجهاز.",
     retry: "حاول مرة أخرى",
     required: "يرجى كتابة اسم الطفل وحيوانه أو لعبته المفضلة.",
@@ -72,6 +88,9 @@ export const translations: Record<Lang, Dict> = {
       model_not_allowed: "هذا النموذج غير متاح. اختر نموذجًا آخر.",
       generation_failed: "النجوم نامت قليلًا ولم نستطع كتابة الحكاية. حاول مرة أخرى.",
       network: "يبدو أن الاتصال ضعيف. تأكد من الإنترنت وحاول مرة أخرى.",
+      mic_denied: "نحتاج إذن الميكروفون لنسمعك. فعّله من إعدادات المتصفح، أو اكتب بدلًا من ذلك.",
+      no_speech: "لم نسمع شيئًا. اقترب من الميكروفون وحاول مرة أخرى.",
+      transcribe_failed: "لم نستطع فهم الصوت. حاول مرة أخرى أو اكتب بدلًا من ذلك.",
     },
   },
   en: {
@@ -97,6 +116,14 @@ export const translations: Record<Lang, Dict> = {
     copied: "Copied ✓",
     listen: "Listen to the story",
     stopListening: "Stop",
+    pause: "Pause",
+    resume: "Resume",
+    preparingVoice: "Getting the voice ready...",
+    voiceFallback: "The storyteller voice is busy, so we're using your device's voice.",
+    sayIt: "Say it out loud",
+    sayItHint: "e.g. “Sara, a bunny, the moon”",
+    recording: "Listening... tap to stop",
+    transcribing: "Writing down what you said...",
     noVoice: "This device has no voice for this language. Try a phone or another browser.",
     retry: "Try again",
     required: "Please enter the child's name and a favorite animal or toy.",
@@ -108,6 +135,9 @@ export const translations: Record<Lang, Dict> = {
       model_not_allowed: "That model isn't available. Please pick another one.",
       generation_failed: "The stars dozed off and we couldn't write the story. Please try again.",
       network: "The connection seems weak. Check your internet and try again.",
+      mic_denied: "We need the microphone to hear you. Allow it in your browser settings, or type instead.",
+      no_speech: "We didn't hear anything. Move closer to the microphone and try again.",
+      transcribe_failed: "We couldn't understand the audio. Try again, or type instead.",
     },
   },
 };

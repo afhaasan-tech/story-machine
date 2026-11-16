@@ -1,4 +1,4 @@
-import { rateLimited } from "@/lib/rateLimit";
+import { clientIp, rateLimited } from "@/lib/rateLimit";
 import { generateStory } from "@/lib/story";
 import { validate } from "@/lib/validate";
 
@@ -9,11 +9,7 @@ function fail(code: string, status: number) {
 }
 
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  if (rateLimited(ip)) return fail("rate_limited", 429);
+  if (rateLimited(`story:${clientIp(request)}`)) return fail("rate_limited", 429);
 
   const text = await request.text();
   if (text.length > 4000) return fail("invalid_input", 400);

@@ -28,6 +28,14 @@ Edit `src/config/models.ts`. It is the only list of models: the dropdown, the se
 3. In `src/lib/validate.ts`, allow the new code, and in `src/lib/story.ts` extend `matchesLanguage` for its script.
 4. Mention the language in the system prompt in `src/lib/prompt.ts`.
 
+## Voice (optional)
+
+Both features are off until their key exists, and keys stay on the server.
+
+- **Listen to the story:** works out of the box with the browser's own voices. Add  (free plan, about 10 minutes a month, not for selling an app) for a natural narrator via . If the quota runs out it falls back to the browser voice. Optional .
+- **Say the spark out loud:** add  (free Whisper on console.groq.com).  turns speech into text and fills the name, animal and place.
+- Only use **free** keys on the public site: a paid key on a public website can be spent by strangers.
+
 ## Safety and limits
 
 - Only models in the allow-list are accepted; anything else is rejected.
