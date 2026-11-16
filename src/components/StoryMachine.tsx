@@ -60,6 +60,7 @@ export default function StoryMachine() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<Story | null>(null);
+  const [storyLang, setStoryLang] = useState<Lang>("ar");
   const [copied, setCopied] = useState(false);
 
   const t = translations[lang];
@@ -100,6 +101,7 @@ export default function StoryMachine() {
         setError(typeof data.error === "string" ? data.error : "generation_failed");
       } else {
         setStory(data as Story);
+        setStoryLang(lang);
         setScreen("story");
         window.scrollTo({ top: 0 });
       }
@@ -284,7 +286,11 @@ export default function StoryMachine() {
         )}
 
         {screen === "story" && story && (
-          <article className="animate-fade-in">
+          <article
+            className="animate-fade-in"
+            lang={storyLang}
+            dir={LANGS.find((l) => l.code === storyLang)!.dir}
+          >
             <h1 className="text-center text-3xl font-extrabold leading-snug text-moon sm:text-4xl">{story.title}</h1>
             <div className="mt-6 space-y-5 rounded-3xl bg-night-700/70 p-5 text-start text-2xl leading-loose shadow-xl shadow-black/20 sm:p-8">
               {story.story
