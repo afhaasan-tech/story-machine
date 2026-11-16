@@ -28,6 +28,9 @@ export type Dict = {
   change: string;
   copy: string;
   copied: string;
+  listen: string;
+  stopListening: string;
+  noVoice: string;
   retry: string;
   errors: Record<string, string>;
   required: string;
@@ -56,6 +59,9 @@ export const translations: Record<Lang, Dict> = {
     change: "غيّر الفكرة",
     copy: "نسخ الحكاية",
     copied: "تم النسخ ✓",
+    listen: "استمع للحكاية",
+    stopListening: "إيقاف",
+    noVoice: "جهازك لا يحتوي على صوت عربي. جرّب جوالًا أو متصفحًا آخر، أو أضف صوتًا عربيًا من إعدادات الجهاز.",
     retry: "حاول مرة أخرى",
     required: "يرجى كتابة اسم الطفل وحيوانه أو لعبته المفضلة.",
     langToggleLabel: "اللغة",
@@ -89,6 +95,9 @@ export const translations: Record<Lang, Dict> = {
     change: "Change the spark",
     copy: "Copy story",
     copied: "Copied ✓",
+    listen: "Listen to the story",
+    stopListening: "Stop",
+    noVoice: "This device has no voice for this language. Try a phone or another browser.",
     retry: "Try again",
     required: "Please enter the child's name and a favorite animal or toy.",
     langToggleLabel: "Language",

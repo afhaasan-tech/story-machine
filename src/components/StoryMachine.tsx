@@ -62,6 +62,8 @@ export default function StoryMachine() {
   const [story, setStory] = useState<Story | null>(null);
   const [storyLang, setStoryLang] = useState<Lang>("ar");
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceMissing, setVoiceMissing] = useState(false);
 
   const t = translations[lang];
   const dir = useMemo(() => LANGS.find((l) => l.code === lang)!.dir, [lang]);
@@ -111,6 +113,55 @@ export default function StoryMachine() {
       setLoading(false);
     }
   }
+
+  function stopSpeaking() {
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {}
+    setSpeaking(false);
+  }
+
+  // Read the story aloud with the browser's own voices (free, no key). Quality depends on the device.
+  function speakStory() {
+    if (!story || typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setVoiceMissing(true);
+      return;
+    }
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const voices = synth.getVoices();
+    const voice = voices.find((v) => v.lang.toLowerCase().startsWith(storyLang));
+    // Arabic voices are missing on some computers; without one the text would be read wrongly.
+    if (!voice && storyLang === "ar" && voices.length > 0) {
+      setVoiceMissing(true);
+      return;
+    }
+    setVoiceMissing(false);
+    const parts = [story.title, ...story.story.split(/\n+/)].filter((p) => p.trim());
+    parts.forEach((text, i) => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = voice?.lang ?? (storyLang === "ar" ? "ar-SA" : "en-US");
+      if (voice) u.voice = voice;
+      u.rate = 0.85; // slow and sleepy
+      u.pitch = 1;
+      if (i === parts.length - 1) {
+        u.onend = () => setSpeaking(false);
+        u.onerror = () => setSpeaking(false);
+      }
+      synth.speak(u);
+    });
+    setSpeaking(true);
+  }
+
+  // Stop reading when leaving the story, starting a new one, or closing the page.
+  useEffect(() => {
+    if (screen !== "story" || loading) stopSpeaking();
+  }, [screen, loading]);
+  useEffect(() => stopSpeaking, []);
+  // Some browsers load their voice list late.
+  useEffect(() => {
+    window.speechSynthesis?.getVoices();
+  }, []);
 
   async function copyStory() {
     if (!story) return;
@@ -307,8 +358,25 @@ export default function StoryMachine() {
               </p>
             )}
 
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button type="button" onClick={generate} disabled={loading} className={bigBtn}>
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={speaking ? stopSpeaking : speakStory}
+                aria-pressed={speaking}
+                className={`${bigBtn} flex items-center gap-2`}
+              >
+                <span aria-hidden>{speaking ? "⏹" : "🔊"}</span>
+                {speaking ? t.stopListening : t.listen}
+              </button>
+            </div>
+            {voiceMissing && (
+              <p role="status" className="mt-3 text-center text-lg text-lavender-200">
+                {t.noVoice}
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <button type="button" onClick={generate} disabled={loading} className={softBtn}>
                 {loading ? t.loading : t.another}
               </button>
               <button type="button" onClick={() => setScreen("start")} disabled={loading} className={softBtn}>
