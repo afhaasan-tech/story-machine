@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MODELS } from "@/config/models";
 import { rateLimited } from "./rateLimit";
-import { matchesLanguage, parseStory } from "./story";
+import { matchesLanguage, parseStory, regroupParagraphs } from "./story";
 import { validate } from "./validate";
 
 const base = { lang: "en", name: "Sara", subject: "a bunny", place: "the moon", length: "short", model: MODELS[0].id };
@@ -42,6 +42,16 @@ describe("story parsing", () => {
   it("parses fenced JSON", () => {
     const s = parseStory("```json\n" + JSON.stringify({ title: "T", story: long }) + "\n```");
     expect(s?.title).toBe("T");
+  });
+  it("regroups one-sentence paragraphs", () => {
+    const lines = Array.from({ length: 24 }, (_, i) => `Sentence number ${i}.`).join("\n\n");
+    const out = regroupParagraphs(lines);
+    expect(out.split("\n\n").length).toBe(6);
+  });
+  it("keeps real paragraphs", () => {
+    const para = "This is a long paragraph with many words in it so the average stays high enough to keep it as is, really.";
+    const text = Array.from({ length: 10 }, () => para).join("\n\n");
+    expect(regroupParagraphs(text).split("\n\n").length).toBe(10);
   });
   it("rejects invalid JSON", () => expect(parseStory("hello")).toBeNull());
   it("checks language", () => {

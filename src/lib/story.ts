@@ -10,6 +10,19 @@ const TOTAL_BUDGET_MS = 56_000; // Vercel function limit is 60s
 const MIN_FALLBACK_MS = 8_000;
 const MAX_ATTEMPTS = 3; // chosen model + up to 2 fallbacks, all within the 60s function limit
 
+/** Models often put one short sentence per paragraph. Regroup them into paragraphs of 3 to 4 sentences. */
+export function regroupParagraphs(story: string): string {
+  const lines = story
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const avgWords = lines.reduce((n, l) => n + l.split(/\s+/).length, 0) / Math.max(lines.length, 1);
+  if (lines.length <= 9 || avgWords > 14) return lines.join("\n\n");
+  const groups: string[] = [];
+  for (let i = 0; i < lines.length; i += 4) groups.push(lines.slice(i, i + 4).join(" "));
+  return groups.join("\n\n");
+}
+
 /** Pull a {title, story} object out of whatever the model returned. */
 export function parseStory(raw: string): Story | null {
   const text = raw.replace(/```(?:json)?/gi, "");
@@ -20,7 +33,7 @@ export function parseStory(raw: string): Story | null {
     const o = JSON.parse(text.slice(start, end + 1));
     if (typeof o.title !== "string" || typeof o.story !== "string") return null;
     const title = o.title.trim();
-    const story = o.story.trim();
+    const story = regroupParagraphs(o.story.trim());
     if (!title || story.length < 200) return null;
     return { title, story };
   } catch {
