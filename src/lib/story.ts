@@ -5,7 +5,9 @@ import type { Input } from "./validate";
 export type Story = { title: string; story: string };
 
 const MAX_TOKENS = 3000;
-const PER_CALL_TIMEOUT_MS = 24_000;
+const FIRST_CALL_TIMEOUT_MS = 36_000;
+const TOTAL_BUDGET_MS = 56_000; // Vercel function limit is 60s
+const MIN_FALLBACK_MS = 8_000;
 const MAX_ATTEMPTS = 3; // chosen model + up to 2 fallbacks, all within the 60s function limit
 
 /** Pull a {title, story} object out of whatever the model returned. */
@@ -36,7 +38,7 @@ export function matchesLanguage(s: Story, lang: "ar" | "en"): boolean {
   return lang === "ar" ? arabic / total > 0.9 : arabic / total < 0.05;
 }
 
-async function callModel(model: string, input: Input, key: string): Promise<Story | null> {
+async function callModel(model: string, input: Input, key: string, timeoutMs: number): Promise<Story | null> {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -54,7 +56,7 @@ async function callModel(model: string, input: Input, key: string): Promise<Stor
         { role: "user", content: buildUserMessage(input) },
       ],
     }),
-    signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -67,9 +69,12 @@ async function callModel(model: string, input: Input, key: string): Promise<Stor
 /** Try the chosen model first; if it fails or returns bad JSON, fall back to other free models. */
 export async function generateStory(input: Input, key: string): Promise<Story | null> {
   const order = [input.model, ...MODELS.map((m) => m.id).filter((id) => id !== input.model)];
-  for (const model of order.slice(0, MAX_ATTEMPTS)) {
+  const start = Date.now();
+  for (const [i, model] of order.slice(0, MAX_ATTEMPTS).entries()) {
+    const left = TOTAL_BUDGET_MS - (Date.now() - start);
+    if (i > 0 && left < MIN_FALLBACK_MS) break;
     try {
-      const s = await callModel(model, input, key);
+      const s = await callModel(model, input, key, i === 0 ? Math.min(FIRST_CALL_TIMEOUT_MS, left) : left);
       if (s) return s;
     } catch {
       // timeout / network: try the next model
