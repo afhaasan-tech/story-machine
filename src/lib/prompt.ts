@@ -38,6 +38,6 @@ export function buildUserMessage(o: {
     length: o.length,
     // Free models tend to undershoot (Arabic most of all), so ask for a bit more.
     target_words: Math.round(WORDS[o.length] * (o.lang === "ar" ? 2 : 1.2)),
-    note: "Write at least this many words, in many short paragraphs, and end with the child falling asleep.",
+    note: "Write at least this many words, as 6 to 8 paragraphs of 3 to 5 short sentences each (never one sentence per paragraph), and end with the child falling asleep.",
   });
 }
