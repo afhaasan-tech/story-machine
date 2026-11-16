@@ -4,7 +4,7 @@ export async function GET() {
   return Response.json(
     {
       narration: eleven,
-      dictation: eleven || Boolean(process.env.GROQ_API_KEY),
+      dictation: eleven || Boolean(process.env.GROQ_API_KEY ?? process.env.API_GROQ_KEY),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

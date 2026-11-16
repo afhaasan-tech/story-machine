@@ -13,7 +13,7 @@ function fail(code: string, status: number) {
 }
 
 function fileName(type: string) {
-  const ext = type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm";
+  const ext = type.includes("mpeg") ? "mp3" : type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm";
   return `spark.${ext}`;
 }
 
@@ -53,7 +53,7 @@ async function viaElevenLabs(audio: Blob, lang: string, key: string): Promise<st
 }
 
 export async function POST(request: Request) {
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY ?? process.env.API_GROQ_KEY; // accepts either name
   const elevenKey = process.env.ELEVENLABS_API_KEY;
   if (!groqKey && !elevenKey) return fail("not_configured", 503);
   if (rateLimited(`stt:${clientIp(request)}`, Date.now(), LIMIT_PER_MINUTE)) return fail("rate_limited", 429);
