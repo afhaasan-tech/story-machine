@@ -39,7 +39,15 @@ export async function POST(request: Request) {
     signal: AbortSignal.timeout(50_000),
   }).catch(() => null);
 
-  if (!res || !res.ok || !res.body) return fail("speak_failed", 502);
+  if (!res || !res.ok || !res.body) {
+    // Log only the status and ElevenLabs' own message (never the key) to help debugging.
+    const detail = res ? (await res.text().catch(() => "")).slice(0, 300) : "no response";
+    console.error("ElevenLabs TTS failed:", res?.status ?? "network", detail);
+    return Response.json(
+      { error: "speak_failed", upstream: res?.status ?? 0 },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   return new Response(res.body, {
     headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
   });
